@@ -10,3 +10,5 @@ wheels/
 .venv
 
 *.pth
+lightning_logs
+checkpoints

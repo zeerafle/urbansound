@@ -19,8 +19,11 @@ class UrbanSoundDataset(Dataset):
                  transformation,
                  target_sample_rate,
                  num_samples,
-                 device):
+                 device,
+                 target_folds=None):
         self.annotations = pd.read_csv(annotations_file)
+        if target_folds is not None:
+            self.annotations = self.annotations[self.annotations['fold'].isin(target_folds)].reset_index(drop=True)
         self.audio_dir = audio_dir
         self.device = "cpu"
         self.transformation = transformation

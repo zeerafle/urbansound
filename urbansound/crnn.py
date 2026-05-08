@@ -88,11 +88,11 @@ class CRNNNetwork(nn.Module):
         # Output shape: (batch_size, hidden_size)
         last_time_step = rnn_out[:, -1, :]
 
-        # Pass through linear and softmax
+        # Pass through linear
         logits = self.linear(last_time_step)
-        predictions = self.softmax(logits)
+        # predictions = self.softmax(logits)
 
-        return predictions
+        return logits
 
 
 if __name__ == "__main__":
