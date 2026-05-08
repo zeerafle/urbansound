@@ -4,7 +4,8 @@ from torch import nn
 from torch.utils.data import DataLoader
 
 from urbansound.urbansounddataset import UrbanSoundDataset
-from urbansound.cnn import CNNNetwork
+# from urbansound.cnn import CNNNetwork
+from urbansound.crnn import CRNNNetwork
 from urbansound.urbansounddataset import AUDIO_DIR, ANNOTATIONS_FILE, SAMPLE_RATE, NUM_SAMPLES
 
 
@@ -61,21 +62,21 @@ if __name__ == "__main__":
                             SAMPLE_RATE,
                             NUM_SAMPLES,
                             device)
-    
+
     train_dataloader = create_data_loader(usd, BATCH_SIZE)
 
     # construct model and assign it to device
-    cnn = CNNNetwork().to(device)
-    print(cnn)
+    crnn = CRNNNetwork().to(device)
+    print(crnn)
 
     # initialise loss funtion + optimiser
     loss_fn = nn.CrossEntropyLoss()
-    optimiser = torch.optim.Adam(cnn.parameters(),
+    optimiser = torch.optim.Adam(crnn.parameters(),
                                  lr=LEARNING_RATE)
 
     # train model
-    train(cnn, train_dataloader, loss_fn, optimiser, device, EPOCHS)
+    train(crnn, train_dataloader, loss_fn, optimiser, device, EPOCHS)
 
     # save model
-    torch.save(cnn.state_dict(), "feedforwardnet.pth")
-    print("Trained feed forward net saved at feedforwardnet.pth")
+    torch.save(crnn.state_dict(), "crnn.pth")
+    print("Trained CRNN saved at crnn.pth")
