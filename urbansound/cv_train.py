@@ -6,21 +6,21 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint, LearningRateMonitor
 
 from urbansound.urbansounddataset import UrbanSoundDataset, AUDIO_DIR, ANNOTATIONS_FILE, SAMPLE_RATE, NUM_SAMPLES
-from urbansound.crnn_lightning import LitCRNNNetwork
+from urbansound.resnet_lightning import LitResNet50
 
 
 BATCH_SIZE = 128
 EPOCHS = 100
-LEARNING_RATE = 0.001
+LEARNING_RATE = 5e-4
 FAST_DEV_RUN = False
 
 
-def get_dataloaders(val_fold, all_folds, mel_spectrogram, device):
+def get_dataloaders(val_fold, all_folds, train_transform, val_transform, device):
     train_folds = [f for f in all_folds if f != val_fold]
 
     train_dataset = UrbanSoundDataset(ANNOTATIONS_FILE,
                                       AUDIO_DIR,
-                                      mel_spectrogram,
+                                      train_transform,
                                       SAMPLE_RATE,
                                       NUM_SAMPLES,
                                       device,
@@ -28,7 +28,7 @@ def get_dataloaders(val_fold, all_folds, mel_spectrogram, device):
 
     val_dataset = UrbanSoundDataset(ANNOTATIONS_FILE,
                                      AUDIO_DIR,
-                                     mel_spectrogram,
+                                     val_transform,
                                      SAMPLE_RATE,
                                      NUM_SAMPLES,
                                      device,
@@ -43,12 +43,23 @@ def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Using device {device}")
 
-    mel_spectrogram = torchaudio.transforms.MelSpectrogram(
+    # Base mel spectrogram with higher resolution
+    base_mel = torchaudio.transforms.MelSpectrogram(
         sample_rate=SAMPLE_RATE,
         n_fft=1024,
-        hop_length=512,
-        n_mels=64
+        hop_length=256,
+        n_mels=128
     )
+
+    # Train transform applies SpecAugment
+    train_transform = torch.nn.Sequential(
+        base_mel,
+        torchaudio.transforms.FrequencyMasking(freq_mask_param=15),
+        torchaudio.transforms.TimeMasking(time_mask_param=35)
+    )
+
+    # Validation transform is just the mel spectrogram
+    val_transform = base_mel
 
     folds = [1, 2, 3, 4, 5]
 
@@ -60,9 +71,9 @@ def main():
         print(f"Starting Fold {val_fold} as Validation")
         print(f"{'='*30}")
 
-        train_loader, val_loader = get_dataloaders(val_fold, folds, mel_spectrogram, "cpu") # dataset init expects cpu
+        train_loader, val_loader = get_dataloaders(val_fold, folds, train_transform, val_transform, "cpu") # dataset init expects cpu
 
-        model = LitCRNNNetwork(learning_rate=LEARNING_RATE)
+        model = LitResNet50(learning_rate=LEARNING_RATE)
 
         # Callbacks
         early_stopping = EarlyStopping(monitor='val_loss', patience=5, mode='min', verbose=True)
