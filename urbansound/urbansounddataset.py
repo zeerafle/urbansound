@@ -22,8 +22,8 @@ class UrbanSoundDataset(Dataset):
                  device):
         self.annotations = pd.read_csv(annotations_file)
         self.audio_dir = audio_dir
-        self.device = device
-        self.transformation = transformation.to(self.device)
+        self.device = "cpu"
+        self.transformation = transformation
         self.target_sample_rate = target_sample_rate
         self.num_samples = num_samples
 
@@ -34,7 +34,7 @@ class UrbanSoundDataset(Dataset):
         audio_sample_path = self._get_audio_sample_path(index)
         label = self._get_audio_sample_label(index)
         signal, sr = torchaudio.load(audio_sample_path)
-        signal = signal.to(self.device)
+        # signal = signal.to(self.device)
         signal = self._resample_if_necessary(signal, sr)
         signal = self._mix_down_if_necessary(signal)
         signal = self._cut_if_necessary(signal)
@@ -58,7 +58,7 @@ class UrbanSoundDataset(Dataset):
     def _resample_if_necessary(self, signal, sr):
         if sr != self.target_sample_rate:
             resampler = torchaudio.transforms.Resample(sr, self.target_sample_rate)
-            resampler = resampler.to(self.device) # Does not work if not brought to device
+            # resampler = resampler.to(self.device) # Does not work if not brought to device
             signal = resampler(signal)
         return signal
 

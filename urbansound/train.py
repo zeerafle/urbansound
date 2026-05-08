@@ -15,7 +15,13 @@ LEARNING_RATE = 0.001
 
 
 def create_data_loader(train_data, batch_size):
-    train_dataloader = DataLoader(train_data, batch_size=batch_size)
+    train_dataloader = DataLoader(
+        train_data,
+        batch_size=batch_size,
+        num_workers=4,        # Use multiple processes for data loading
+        pin_memory=True,      # Speeds up tensor transfer to GPU
+        shuffle=True
+    )
     return train_dataloader
 
 
