@@ -1,0 +1,21 @@
+[project]
+name = "urbansound"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "pandas>=3.0.2",
+    "soundata>=1.0.1",
+    "torch>=2.11.0",
+    "torchaudio>=2.11.0",
+    "torchcodec>=0.11.1",
+    "torchsummary>=1.5.1",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["urbansound"]
