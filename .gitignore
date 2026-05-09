@@ -11,4 +11,4 @@ wheels/
 
 *.pth
 lightning_logs
-checkpoints
+*checkpoints

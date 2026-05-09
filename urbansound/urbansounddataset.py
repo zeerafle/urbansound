@@ -29,6 +29,7 @@ class UrbanSoundDataset(Dataset):
         self.transformation = transformation
         self.target_sample_rate = target_sample_rate
         self.num_samples = num_samples
+        self.resampler = torchaudio.transforms.Resample(orig_freq=target_sample_rate, new_freq=target_sample_rate)
 
     def __len__(self):
         return len(self.annotations)
@@ -60,9 +61,8 @@ class UrbanSoundDataset(Dataset):
 
     def _resample_if_necessary(self, signal, sr):
         if sr != self.target_sample_rate:
-            resampler = torchaudio.transforms.Resample(sr, self.target_sample_rate)
             # resampler = resampler.to(self.device) # Does not work if not brought to device
-            signal = resampler(signal)
+            signal = self.resampler(signal)
         return signal
 
     def _mix_down_if_necessary(self, signal):
