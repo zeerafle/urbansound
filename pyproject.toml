@@ -6,7 +6,9 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "ipykernel>=7.2.0",
+    "librosa>=0.11.0",
     "lightning>=2.6.1",
+    "matplotlib>=3.10.9",
     "pandas>=3.0.2",
     "soundata>=1.0.1",
     "torch>=2.11.0",
@@ -22,3 +24,6 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["urbansound"]
+
+[tool.pyright]
+typeCheckingMode = "off"

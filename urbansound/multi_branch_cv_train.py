@@ -51,6 +51,7 @@ def get_dataloaders(val_fold, all_folds, transform, device):
         num_workers=4,
         pin_memory=True,
         shuffle=True,
+        drop_last=True,
     )
     val_dataloader = DataLoader(
         val_dataset,
@@ -63,7 +64,7 @@ def get_dataloaders(val_fold, all_folds, transform, device):
     return train_dataloader, val_dataloader
 
 
-def main():
+if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Using device {device}")
 
@@ -149,7 +150,3 @@ def main():
 
     print("\nAccumulated Confusion Matrix:")
     print(accumulated_conf_matrix)
-
-
-if __name__ == "__main__":
-    main()

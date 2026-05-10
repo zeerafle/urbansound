@@ -8,46 +8,69 @@ class CNNBranch(nn.Module):
     def __init__(self, out_features=256, freeze_pretrained=False):
         super().__init__()
 
-        resnet = models.resnet50(weights=models.ResNet50_Weights.DEFAULT)
+        # Load ConvNeXt
+        base = models.convnext_base(weights=models.ConvNeXt_Base_Weights.DEFAULT)
 
-        # The original pretrained resnet takes 3-channel (RGB) images.
-        # Mel spectrograms are 1-channel. We must replace the very first Conv2d layer
-        # while keeping the same output channels, kernel size, and stride.
-        original_conv1 = resnet.conv1
-        resnet.conv1 = nn.Conv2d(
+        # 1. First Layer Fix: Handle 1-channel Mel Spectrograms
+        original_conv1 = base.features[0][0]
+
+        # Create the new layer
+        new_conv1 = nn.Conv2d(
             in_channels=1,
             out_channels=original_conv1.out_channels,
             kernel_size=original_conv1.kernel_size,
             stride=original_conv1.stride,
             padding=original_conv1.padding,
-            bias=original_conv1.bias,
+            bias=original_conv1.bias is not None,
         )
 
+        # Preserve and adapt the weights (sum across the 3 RGB channels)
+        with torch.no_grad():
+            # Original weight shape is [out_channels, 3, kernel_h, kernel_w]
+            # We sum across dim 1 to get [out_channels, 1, kernel_h, kernel_w]
+            new_conv1.weight.data = original_conv1.weight.data.sum(dim=1, keepdim=True)
+
+            # Preserve the bias if it exists
+            if original_conv1.bias is not None:
+                new_conv1.bias.data = original_conv1.bias.data.clone()
+
+        base.features[0][0] = new_conv1
+
+        # 2. Transients Fix: Use Max Pooling for sharp sounds like gunshots/horns
+        base.avgpool = nn.AdaptiveMaxPool2d((1, 1))
+
+        # 3. Parameter Management: Freeze the pretrained weights
         if freeze_pretrained:
-            # Freeze all parameters of the ResNet backbone
-            for param in resnet.parameters():
+            for param in base.parameters():
                 param.requires_grad = False
-            # Unfreeze the new conv1 layer since its weights are randomly initialized
-            for param in resnet.conv1.parameters():
+            # Ensure the new 1-channel conv layer CAN learn
+            for param in base.features[0][0].parameters():
                 param.requires_grad = True
 
-        # Dynamically get the feature dimension of the backbone (e.g. 512 for ResNet18, 2048 for ResNet50)
-        in_features = resnet.fc.in_features
+        # 4. Dimension Handling
+        in_features = base.classifier[2].in_features  # 1024 for base
 
-        # Remove the final fully connected classification layer (fc) from ResNet.
-        # We only want it as a feature extractor.
-        self.feature_extractor = nn.Sequential(*list(resnet.children())[:-1])
+        # Strip the ImageNet classifier head
+        self.feature_extractor = nn.Sequential(*list(base.children())[:-1])
 
-        # Map the backbone features to our desired out_features
-        self.fc = nn.Sequential(nn.Linear(in_features, out_features), nn.ReLU())
+        # 5. The Projection Layer (Replacing your 'self.classifier')
+        # We use standard LayerNorm here because we will flatten first.
+        self.projection = nn.Sequential(
+            nn.Linear(in_features, out_features),
+            nn.LayerNorm(out_features),  # Normalized in the 1D latent space
+            nn.ReLU(),
+            nn.Dropout(
+                0.3
+            ),  # Adding dropout here helps with the UrbanSound8K imbalance
+        )
 
     def forward(self, x):
-        # Input shape expected: (Batch, 1, Mel_Bands, Time_Frames)
-        x = self.feature_extractor(x)
-        # ResNet output x is now shape (Batch, in_features, 1, 1).
-        # Flatten it to just (Batch, in_features)
-        x = x.view(x.size(0), -1)
-        x = self.fc(x)
+        # x: (Batch, 1, Mels, Time)
+        x = self.feature_extractor(x)  # Output: (Batch, 1024, 1, 1)
+        x = torch.flatten(x, 1)  # Output: (Batch, 1024)
+
+        # This is your projection to the Fusion space
+        x = self.projection(x)  # Output: (Batch, out_features)
         return x
 
 
@@ -126,9 +149,9 @@ class MultiBranchAttentionFusion(nn.Module):
         feat_e = self.eng_branch(x_eng)
 
         # Project to uniform hidden dimension D
-        h_c = F.relu(self.proj_c(feat_c))
-        h_g = F.relu(self.proj_g(feat_g))
-        h_e = F.relu(self.proj_e(feat_e))
+        h_c = self.proj_c(feat_c)
+        h_g = self.proj_g(feat_g)
+        h_e = self.proj_e(feat_e)
 
         # Stack into H: (Batch, 3, D)
         H = torch.stack((h_c, h_g, h_e), dim=1)
@@ -147,4 +170,4 @@ class MultiBranchAttentionFusion(nn.Module):
 
         # Classification
         out = self.classifier(f)
-        return out
+        return out, alpha
