@@ -6,3 +6,4 @@ assets/external/
 *.py[cod]
 
 uploaded_files
+.env
