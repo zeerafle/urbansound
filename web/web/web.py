@@ -72,22 +72,35 @@ class State(rx.State):
 def index() -> rx.Component:
     # Welcome Page (Index)
     return rx.container(
-        rx.color_mode.button(position="top-right"),
+        rx.color_mode.button(position="top-right", margin="1em"),
         rx.vstack(
-            rx.heading("Kentsel Ses (Urban Sound) Sınıflandırması", size="9"),
+            rx.heading("Kentsel Ses Sınıflandırması", size="8", text_align="center", margin_bottom="1em"),
             rx.upload(
                 rx.vstack(
+                    rx.icon("upload", color="gray", size=32),
                     rx.text(
-                        "Sınıflandırılmak için sesinizi yükleyin. Maksimum 4 saniye, bundan fazlası kesilecektir.",
+                        "Sınıflandırılmak için ses dosyalarınızı sürükleyin veya tıklayarak seçin.",
+                        text_align="center",
+                        color="gray"
+                    ),
+                    rx.text(
+                        "(Maksimum 4 saniye, daha uzun kayıtlar otomatik kesilecektir)",
+                        size="2",
+                        text_align="center",
+                        color="gray"
                     ),
                     rx.button(
-                        "Upload Files",
+                        "Dosya Seç",
+                        color_scheme="blue",
+                        variant="soft",
+                        margin_top="1em"
                     ),
-                    align="center"
+                    align="center",
                 ),
                 id="file_upload",
-                border="2px dashed #ccc",
-                padding="2em",
+                border="2px dashed var(--gray-6)",
+                border_radius="md",
+                padding="3em",
                 multiple=True,
                 accept={
                     "audio/*": [".wav", ".mp3", ".ogg"]
@@ -95,38 +108,66 @@ def index() -> rx.Component:
                 max_files=5,
                 disabled=False,
                 on_drop=State.handle_upload(rx.upload_files(upload_id="file_upload")),
+                width="100%",
+                _hover={"bg": "var(--gray-3)", "cursor": "pointer"},
             ),
             rx.cond(
                 State.is_uploaded,
-                # if true
                 rx.vstack(
-                    # Display uploaded files using rx.get_upload_url()
+                    rx.heading("Yüklenen Dosyalar", size="5", margin_top="1em"),
                     rx.foreach(
                         State.uploaded_files,
-                        lambda filename: rx.audio(src=rx.get_upload_url(filename)),
+                        lambda filename: rx.card(
+                            rx.vstack(
+                                rx.text(filename, font_weight="bold", size="2"),
+                                rx.audio(src=rx.get_upload_url(filename)),
+                            ),
+                            width="100%"
+                        ),
                     ),
-                    # run inference
                     rx.button(
-                        "Run Inference",
+                        rx.cond(
+                            State.is_inferring,
+                            "İşleniyor...",
+                            "Sınıflandır"
+                        ),
                         on_click=State.run_inference,
-                        # disable when no file uploaded, or while inferring
-                        disabled=~State.is_uploaded | State.is_inferring
+                        disabled=~State.is_uploaded | State.is_inferring,
+                        size="3",
+                        width="100%",
+                        color_scheme="green",
+                        margin_top="1em",
                     ),
+                    width="100%",
+                    spacing="3",
                 ),
-                # else
-                rx.text("No files uploaded yet.")
+                rx.text("Henüz dosya yüklenmedi.", color="gray", margin_top="1em")
             ),
             rx.cond(
                 State.results,
-                # if true
-                rx.foreach(
-                    State.results,
-                    lambda result: rx.text(result),
+                rx.vstack(
+                    rx.heading("Sonuçlar", size="5", margin_top="1em"),
+                    rx.foreach(
+                        State.results,
+                        lambda result: rx.badge(
+                            result,
+                            size="3",
+                            color_scheme="blue",
+                            radius="full",
+                            padding="0.5em 1em"
+                        ),
+                    ),
+                    width="100%",
+                    spacing="3",
+                    align="center",
                 ),
             ),
             spacing="5",
-            justify="center",
-            min_height="100vh",
+            align="center",
+            width="100%",
+            max_width="600px",
+            margin_x="auto",
+            padding_y="4em",
         ),
     )
 
