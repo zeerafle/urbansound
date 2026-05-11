@@ -74,9 +74,9 @@ class LitMultiBranchFusion(pl.LightningModule):
             sample_rate=sample_rate,
             n_mfcc=n_mfcc,
             melkwargs={
-                "n_fft": 512,
+                "n_fft": 1024,
                 "n_mels": n_mels,
-                "hop_length": 256,
+                "hop_length": 512,
                 "center": True,
             },
         )

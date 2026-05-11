@@ -1,35 +1,42 @@
 import os
 
-import torch
-from torch.utils.data import Dataset
 import pandas as pd
+import torch
 import torchaudio
+from torch.utils.data import Dataset
 
 DATASET_PATH = "/teamspace/studios/this_studio/sound_datasets/urbansound8k/"
 ANNOTATIONS_FILE = f"{DATASET_PATH}metadata/UrbanSound8K.csv"
 AUDIO_DIR = f"{DATASET_PATH}audio/"
 SAMPLE_RATE = 22050
-NUM_SAMPLES = 22050
+NUM_SAMPLES = 22050 * 4  # 4 seconds
+
 
 class UrbanSoundDataset(Dataset):
-
-    def __init__(self,
-                 annotations_file,
-                 audio_dir,
-                 transformation,
-                 target_sample_rate,
-                 num_samples,
-                 device,
-                 target_folds=None):
+    def __init__(
+        self,
+        annotations_file,
+        audio_dir,
+        transformation,
+        target_sample_rate,
+        num_samples,
+        device,
+        
+        target_folds=None,
+    ):
         self.annotations = pd.read_csv(annotations_file)
         if target_folds is not None:
-            self.annotations = self.annotations[self.annotations['fold'].isin(target_folds)].reset_index(drop=True)
+            self.annotations = self.annotations[
+                self.annotations["fold"].isin(target_folds)
+            ].reset_index(drop=True)
         self.audio_dir = audio_dir
         self.device = "cpu"
         self.transformation = transformation
         self.target_sample_rate = target_sample_rate
         self.num_samples = num_samples
-        self.resampler = torchaudio.transforms.Resample(orig_freq=target_sample_rate, new_freq=target_sample_rate)
+        self.resampler = torchaudio.transforms.Resample(
+            orig_freq=target_sample_rate, new_freq=target_sample_rate
+        )
 
     def __len__(self):
         return len(self.annotations)
@@ -48,7 +55,7 @@ class UrbanSoundDataset(Dataset):
 
     def _cut_if_necessary(self, signal):
         if signal.shape[1] > self.num_samples:
-            signal = signal[:, :self.num_samples]
+            signal = signal[:, : self.num_samples]
         return signal
 
     def _right_pad_if_necessary(self, signal):
@@ -89,18 +96,12 @@ if __name__ == "__main__":
     print(f"Using device {device}")
 
     mel_spectrogram = torchaudio.transforms.MelSpectrogram(
-        sample_rate=SAMPLE_RATE,
-        n_fft=1024,
-        hop_length=512,
-        n_mels=64
+        sample_rate=SAMPLE_RATE, n_fft=1024, hop_length=512, n_mels=64
     )
 
-    usd = UrbanSoundDataset(ANNOTATIONS_FILE,
-                            AUDIO_DIR,
-                            mel_spectrogram,
-                            SAMPLE_RATE,
-                            NUM_SAMPLES,
-                            device)
+    usd = UrbanSoundDataset(
+        ANNOTATIONS_FILE, AUDIO_DIR, mel_spectrogram, SAMPLE_RATE, NUM_SAMPLES, device
+    )
     print(f"There are {len(usd)} samples in the dataset.")
     signal, label = usd[0]
     print(signal.shape)
