@@ -28,3 +28,8 @@ packages = ["urbansound"]
 
 [tool.pyright]
 typeCheckingMode = "off"
+
+[tool.uv.workspace]
+members = [
+    "web",
+]
